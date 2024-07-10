@@ -11,6 +11,7 @@ const (
 	Kafka    Section = "Kafka"
 	Sentry   Section = "Sentry"
 	Config   Section = "Config"
+	Mongodb  Section = "Mongodb"
 	Redis    Section = "Redis"
 	Firebase Section = "Firebase"
 	Database Section = "database"

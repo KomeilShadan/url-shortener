@@ -1,11 +1,11 @@
 package log
 
 import (
+	"drto-link/internal/config"
 	"fmt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
-	"intrack-notification/internal/config"
 	"sync"
 	"time"
 )

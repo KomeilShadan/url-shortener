@@ -8,13 +8,16 @@ import (
 	"strconv"
 )
 
-var router *gin.Engine
+var (
+	router *gin.Engine
+)
 
 func InitServer(cfg *config.Config) {
 	mode := cfg.App.Mode
 	if mode != gin.DebugMode && mode != gin.TestMode {
 		mode = gin.ReleaseMode
 	}
+	gin.SetMode(mode)
 
 	//Default returns an Engine instance with the Logger and Recovery middleware already attached.
 	//Recovery returns a middleware that recovers from any panics and writes a 500 if there was one.

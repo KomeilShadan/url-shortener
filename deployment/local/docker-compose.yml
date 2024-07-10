@@ -6,7 +6,7 @@ services:
     build:
       context: ./../..
       dockerfile: ./deployment/local/Dockerfile
-    command: " ./main -api"
+    command: " ./main"
     restart: always
     env_file:
       - ./.env
@@ -17,6 +17,15 @@ services:
     networks:
       - default
 
+  mongodb:
+    container_name: "${SERVICE_NAME}-mongo"
+    image: "mongo:4.2.16-bionic"
+    environment:
+      - MONGO_DATABASE=${MONGO_DB}
+      - MONGO_ROOT_USERNAME=${MONGO_DB_USERNAME}
+      - MONGO_ROOT_PASSWORD=${MONGO_DB_PASSWORD}
+    ports:
+      - "27017:27017"
 
 networks:
   default:
