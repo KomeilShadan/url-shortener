@@ -1,10 +1,10 @@
 package log
 
 import (
+	"drto-link/internal/config"
 	"fmt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"intrack-notification/internal/config"
 	"log"
 	"log/syslog"
 )
