@@ -6,26 +6,35 @@ services:
     build:
       context: ./../..
       dockerfile: ./deployment/local/Dockerfile
-    command: " ./main"
-    restart: always
+    command: sh -c './wait-for drto-link-mongo:27017 -- go build -o ./build ./cmd/main.go && ./build/main'
+    restart: unless-stopped
     env_file:
       - ./.env
     ports:
       - "8083:8083"
-#    depends_on:
-#      - kafka
+    depends_on:
+      - mongodb
     networks:
       - default
 
   mongodb:
     container_name: "${SERVICE_NAME}-mongo"
-    image: "mongo:4.2.16-bionic"
+    image: mongo:latest
+    restart: unless-stopped
     environment:
-      - MONGO_DATABASE=${MONGO_DB}
-      - MONGO_ROOT_USERNAME=${MONGO_DB_USERNAME}
-      - MONGO_ROOT_PASSWORD=${MONGO_DB_PASSWORD}
+#      - MONGO_INITDB_DATABASE=${MONGO_DB}
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
     ports:
       - "27017:27017"
+    volumes:
+      - mongodb_data_container:/data/db
+    networks:
+      - default
+
+volumes:
+  mongodb_data_container:
+
 
 networks:
   default:
