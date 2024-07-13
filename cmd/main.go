@@ -22,6 +22,7 @@ func main() {
 		log.Error(log.Config, log.Startup, err, nil)
 		os.Exit(1)
 	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 

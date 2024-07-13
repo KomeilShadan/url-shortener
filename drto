@@ -1,0 +1,65 @@
+#!/bin/bash
+
+API_CONTAINER="docker exec -it drto-link-api"
+MONGO_CONTAINER="docker exec -it drto-link-mongo"
+REDIS_CONTAINER="docker exec -it drto-link-redis"
+
+function clearCodeAndConfigs {
+     echo "...clearing things...."
+}
+
+function pruneBranches() {
+    forbidden="(master|main|stage|develop|legends|badguys|godfathers)";
+    git fetch --all --prune
+    git branch -r --merged master | grep -E -v "$forbidden" | cut -d/ -f2- | xargs -n 1 git push --delete origin
+    git branch -r --merged stage | grep -E -v "$forbidden" | cut -d/ -f2- | xargs -n 1 git push --delete origin
+    git branch --merged master | grep -E -v "$forbidden" | xargs -n 1 git branch -d
+    git branch --merged stage | grep -E -v "$forbidden" | xargs -n 1 git branch -d
+}
+
+function reloadCodeAndConfigs {
+    echo "...pulling repository...."
+    currentBranch=$(git symbolic-ref --short -q HEAD)
+    git pull origin "$currentBranch"
+    git pull origin master
+    pruneBranches
+    clearCodeAndConfigs
+}
+
+function createBranch {
+    branch="feat-$2";
+    git fetch --all --prune
+    git pull origin master
+    git checkout -b "$branch"
+    git push --set-upstream origin "$branch"
+    echo "...Done...."
+}
+
+function createFixBranch {
+    branch="fix-$2";
+    git fetch --all --prune
+    git pull origin master
+    git checkout -b "$branch"
+    git push --set-upstream origin "$branch"
+    echo "...Done...."
+}
+
+function rebuildProject {
+    sudo ${API_CONTAINER} go build -o main ./cmd
+    echo "rebuild the project if you can...."
+}
+
+function binDockerCompose() {
+    cd deployment/local
+    docker-compose "$@"
+}
+
+case $1 in
+  'clear') clearCodeAndConfigs;;
+  'reload') reloadCodeAndConfigs;;
+  'gobuild') rebuildProject;;
+  'api') ${API_CONTAINER} //bin/sh;;
+  'mongo') ${MONGO_CONTAINER} bash;;
+  'redis') ${REDIS_CONTAINER} bash;;
+ *) binDockerCompose "$@";;
+esac
