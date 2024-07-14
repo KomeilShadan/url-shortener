@@ -1,3 +1,5 @@
 package request
 
-type ResolveLinkRequest struct{}
+type ResolveLinkRequest struct {
+	ShortLink string `json:"short_link" valid:"required,url"`
+}

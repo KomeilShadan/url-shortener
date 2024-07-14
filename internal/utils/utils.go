@@ -2,7 +2,12 @@ package utils
 
 import (
 	"crypto/sha256"
+	AppHttp "drto-link/internal/api/http"
 	"encoding/base64"
+	"errors"
+	"github.com/asaskevich/govalidator"
+	"github.com/gin-gonic/gin"
+	"net/http"
 	"os"
 	"strings"
 )
@@ -48,4 +53,28 @@ func AvoidDSelfDomain(url string) bool {
 		return false
 	}
 	return true
+}
+
+func BindRequestBody(ctx *gin.Context, req interface{}) {
+	err := ctx.BindJSON(req)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, AppHttp.ApiResponse{
+			Message: "Bad Request",
+			Error:   errors.New("malformed request body").Error(),
+			Path:    ctx.FullPath(),
+		})
+		return
+	}
+}
+
+func ValidateRequestBody(ctx *gin.Context, req interface{}) {
+	_, err := govalidator.ValidateStruct(req)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, AppHttp.ApiResponse{
+			Message: "Bad Request",
+			Error:   errors.New("invalid request body").Error(),
+			Path:    ctx.FullPath(),
+		})
+		return
+	}
 }
