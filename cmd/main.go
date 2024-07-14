@@ -6,7 +6,9 @@ import (
 	"drto-link/internal/config"
 	"drto-link/pkg/log"
 	"drto-link/pkg/mongodb"
+	"drto-link/pkg/redis"
 	"github.com/caarlos0/env/v11"
+	"github.com/getsentry/sentry-go"
 	"os"
 	"time"
 )
@@ -23,6 +25,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	Logger := log.NewLogger(cfg)
+	// Initialize the new Logger
+	Logger.Init()
+	// Log messages using the Logger
+	Logger.Error(log.Internal, log.Startup, "This is an error message", nil)
+
+	//initial configuration
+	err := sentry.Init(sentry.ClientOptions{
+		Dsn:         cfg.Sentry.Dsn,
+		Environment: cfg.Sentry.Environment,
+	})
+	if err != nil {
+		log.Error(log.Sentry, log.Startup, err, nil)
+		os.Exit(1)
+	}
+	defer sentry.Flush(2 * time.Second)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
@@ -38,6 +57,14 @@ func main() {
 		}
 	}()
 
-	rest.InitServer(cfg)
+	rdb := redis.InitConnection(cfg)
+	defer func() {
+		err := rdb.Close()
+		if err != nil {
+
+		}
+	}()
+
+	rest.InitServer(cfg, rdb, mongo)
 
 }
