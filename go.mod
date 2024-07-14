@@ -4,6 +4,7 @@ go 1.22
 
 require (
 	github.com/caarlos0/env/v11 v11.1.0
+	github.com/getsentry/sentry-go v0.28.1
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-redis/redis/v8 v8.11.5
 	go.mongodb.org/mongo-driver v1.16.0
