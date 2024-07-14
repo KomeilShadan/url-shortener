@@ -1,3 +1,5 @@
 package response
 
-type ResolveLinkResponse struct{}
+type ResolveLinkResponse struct {
+	Link string `json:"link"`
+}

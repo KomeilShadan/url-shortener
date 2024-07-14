@@ -1,21 +1,21 @@
 version: '3.8'
 
 services:
-  api:
-    container_name: "${SERVICE_NAME}-api"
-    build:
-      context: ./../..
-      dockerfile: ./deployment/local/Dockerfile
-    command: sh -c './wait-for drto-link-mongo:27017 -- go build -o ./build ./cmd/main.go && ./build/main'
-    restart: unless-stopped
-    env_file:
-      - ./.env
-    ports:
-      - "8083:8083"
-    depends_on:
-      - mongodb
-    networks:
-      - default
+#  api:
+#    container_name: "${SERVICE_NAME}-api"
+#    build:
+#      context: ./../..
+#      dockerfile: ./deployment/local/Dockerfile
+#    command: sh -c './wait-for drto-link-mongo:27017 -- go build -o ./build ./cmd/main.go && ./build/main'
+#    restart: unless-stopped
+#    env_file:
+#      - ./.env
+#    ports:
+#      - "8083:8083"
+#    depends_on:
+#      - mongodb
+#    networks:
+#      - default
 
   mongodb:
     container_name: "${SERVICE_NAME}-mongo"
@@ -25,12 +25,23 @@ services:
 #      - MONGO_INITDB_DATABASE=${MONGO_DB}
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+    env_file:
+      - ./.env
     ports:
       - "27717:27017"
     volumes:
       - mongodb_data_container:/data/db
     networks:
       - default
+
+#  redis:
+#    image: redis:alpine
+#    container_name: "${SERVICE_NAME}-redis"
+#    ports:
+#      - "6379:6379"
+#    restart: unless-stopped
+#    networks:
+#      - default
 
 volumes:
   mongodb_data_container:
