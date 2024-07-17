@@ -4,6 +4,7 @@ import (
 	AppHttp "drto-link/internal/api/http"
 	"drto-link/internal/api/request"
 	"drto-link/internal/api/response"
+	"drto-link/internal/model"
 	"drto-link/internal/service"
 	"drto-link/internal/utils"
 	"drto-link/pkg/log"
@@ -33,13 +34,10 @@ func ShortLink(ctx *gin.Context) {
 	link := utils.EnforceHTTP(req.Link)
 
 	shortLink, _ := service.GenerateShortLink(link)
+	linkStruct := model.Link{Link: link, ShortLink: shortLink}
 
 	mongodb := ctx.MustGet("mongo").(*mongo.Client)
-
-	_, err := mongodb.Database("link").Collection("links").InsertOne(ctx, bson.M{
-		"link":       link,
-		"short_link": shortLink,
-	})
+	_, err := mongodb.Database("link").Collection("links").InsertOne(ctx, linkStruct)
 	if err != nil {
 		log.Error(log.Mongodb, log.Insert, err, nil)
 		ctx.AbortWithStatusJSON(http.StatusInternalServerError, AppHttp.ApiResponse{
@@ -60,18 +58,34 @@ func ShortLink(ctx *gin.Context) {
 }
 
 func ResolveLink(ctx *gin.Context) {
-	var req request.ResolveLinkRequest
+	var (
+		req        request.ResolveLinkRequest
+		linkStruct model.Link
+	)
 
 	utils.ValidateRequestBody(ctx, &req)
 
 	utils.ValidateRequestBody(ctx, &req)
 
+	mongodb := ctx.MustGet("mongo").(*mongo.Client)
+	err := mongodb.Database("link").
+		Collection("links").
+		FindOne(ctx, bson.M{"short_link": req.ShortLink}).
+		Decode(&linkStruct)
+
+	if err != nil {
+		log.Error(log.Mongodb, log.Select, err, nil)
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, AppHttp.ApiResponse{
+			Message: "Internal Server Error",
+			Error:   errors.New("database error"),
+			Path:    ctx.FullPath(),
+		})
+	}
 	//implement fetching link from mongo or redis
-	link := ""
 
 	ctx.JSON(http.StatusOK, AppHttp.ApiResponse{
 		Data: response.ResolveLinkResponse{
-			Link: link,
+			Link: linkStruct.Link,
 		},
 	})
 }
