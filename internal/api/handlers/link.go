@@ -4,6 +4,7 @@ import (
 	AppHttp "drto-link/internal/api/http"
 	"drto-link/internal/api/request"
 	"drto-link/internal/api/response"
+	"drto-link/internal/config"
 	"drto-link/internal/model"
 	"drto-link/internal/service"
 	"drto-link/internal/utils"
@@ -16,7 +17,12 @@ import (
 )
 
 func ShortLink(ctx *gin.Context) {
-	var req request.ShortLinkRequest
+	cfg := config.Get()
+	var (
+		req              request.ShortLinkRequest
+		shortLinkBaseURL string
+		linkStruct       model.Link
+	)
 
 	// Bind the JSON payload to the ShortLinkRequest struct
 	utils.BindRequestBody(ctx, &req)
@@ -33,13 +39,18 @@ func ShortLink(ctx *gin.Context) {
 	}
 	link := utils.EnforceHTTP(req.Link)
 
+	shortLinkBaseURL = cfg.App.ShortLinkBaseURL
 	shortLink, _ := service.GenerateShortLink(link)
-	linkStruct := model.Link{Link: link, ShortLink: shortLink}
+	updateQuery := bson.M{"$set": model.Link{Link: link, ShortLink: shortLinkBaseURL + shortLink}}
 
 	mongodb := ctx.MustGet("mongo").(*mongo.Client)
-	_, err := mongodb.Database("link").Collection("links").InsertOne(ctx, linkStruct)
+	err := mongodb.Database("link").
+		Collection("links").
+		FindOneAndReplace(ctx, bson.M{"link": link}, updateQuery).
+		Decode(&linkStruct)
+
 	if err != nil {
-		log.Error(log.Mongodb, log.Insert, err, nil)
+		log.Error(log.Mongodb, log.Update, err, nil)
 		ctx.AbortWithStatusJSON(http.StatusInternalServerError, AppHttp.ApiResponse{
 			Message: "Internal Server Error",
 			Error:   errors.New("database error"),
@@ -50,8 +61,8 @@ func ShortLink(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusCreated, AppHttp.ApiResponse{
 		Data: response.ShortLinkResponse{
-			Link:      req.Link,
-			ShortLink: shortLink,
+			Link:      linkStruct.Link,
+			ShortLink: linkStruct.ShortLink,
 			Expirable: req.Expirable,
 		},
 	})
@@ -63,7 +74,7 @@ func ResolveLink(ctx *gin.Context) {
 		linkStruct model.Link
 	)
 
-	utils.ValidateRequestBody(ctx, &req)
+	utils.BindRequestBody(ctx, &req)
 
 	utils.ValidateRequestBody(ctx, &req)
 
