@@ -11,8 +11,8 @@ RUN go clean --modcache
 # Copy the source code from the current directory to the Working Directory inside the container
 COPY . .
 
-#ENV GOCACHE=/root/.cache/go-build
-#RUN --mount=type=cache,target="/root/.cache/go-build" go build -o main ./cmd
+ENV GOCACHE=/root/.cache/go-build
+RUN --mount=type=cache,target="/root/.cache/go-build" go build -o main ./cmd
 
 RUN chown -R komeil:komeil /app
 
@@ -21,5 +21,5 @@ USER komeil
 EXPOSE 8083
 
 # Command to run the executable
-#CMD ["./main"]
+CMD ["./main"]
 
