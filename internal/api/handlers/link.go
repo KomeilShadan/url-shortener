@@ -6,6 +6,7 @@ import (
 	"drto-link/internal/api/response"
 	"drto-link/internal/service"
 	"drto-link/internal/utils"
+	"errors"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -19,7 +20,16 @@ func ShortLink(ctx *gin.Context) {
 	// Validate the ShortLinkRequest struct using Govalidator
 	utils.ValidateRequestBody(ctx, &req)
 
-	shortLink, _ := service.GenerateShortLink(req.Link)
+	if !utils.AvoidDSelfDomain(req.Link) {
+		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, AppHttp.ApiResponse{
+			Message: "Unprocessable Entity (Nice Try!)",
+			Error:   errors.New("unprocessable input link"),
+			Path:    ctx.FullPath(),
+		})
+	}
+	link := utils.EnforceHTTP(req.Link)
+
+	shortLink, _ := service.GenerateShortLink(link)
 
 	//implement mongodb store
 	//implement redis store or caching
