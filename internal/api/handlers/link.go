@@ -6,8 +6,11 @@ import (
 	"drto-link/internal/api/response"
 	"drto-link/internal/service"
 	"drto-link/internal/utils"
+	"drto-link/pkg/log"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"net/http"
 )
 
@@ -31,7 +34,20 @@ func ShortLink(ctx *gin.Context) {
 
 	shortLink, _ := service.GenerateShortLink(link)
 
-	//implement mongodb store
+	mongodb := ctx.MustGet("mongo").(*mongo.Client)
+
+	_, err := mongodb.Database("link").Collection("links").InsertOne(ctx, bson.M{
+		"link":       link,
+		"short_link": shortLink,
+	})
+	if err != nil {
+		log.Error(log.Mongodb, log.Insert, err, nil)
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, AppHttp.ApiResponse{
+			Message: "Internal Server Error",
+			Error:   errors.New("database error"),
+			Path:    ctx.FullPath(),
+		})
+	}
 	//implement redis store or caching
 
 	ctx.JSON(http.StatusCreated, AppHttp.ApiResponse{

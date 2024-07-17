@@ -6,7 +6,6 @@ import (
 	"drto-link/pkg/log"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
-	"go.mongodb.org/mongo-driver/mongo"
 	"strconv"
 )
 
@@ -14,7 +13,7 @@ var (
 	router *gin.Engine
 )
 
-func InitServer(cfg *config.Config, rdb *redis.Client, mongo *mongo.Client) {
+func InitServer(cfg *config.Config /*mongo *mongo.Client,*/, rdb *redis.Client) {
 	mode := cfg.App.Mode
 	if mode != gin.DebugMode && mode != gin.TestMode {
 		mode = gin.ReleaseMode
@@ -26,7 +25,7 @@ func InitServer(cfg *config.Config, rdb *redis.Client, mongo *mongo.Client) {
 	router = gin.Default()
 
 	routes.HealthCheckRoutes(router, cfg)
-	routes.ApiRoutes(router, cfg, rdb, mongo)
+	routes.ApiRoutes(router, cfg /*mongo,*/, rdb)
 
 	err := router.Run(":" + strconv.Itoa(cfg.App.Port))
 

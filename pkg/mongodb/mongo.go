@@ -23,10 +23,10 @@ func InitConnection(ctx context.Context, cfg *config.Config) (*mongo.Client, err
 
 	clientOptions = options.Client().
 		ApplyURI(cfg.Mongo.URI).
-		SetAuth(options.Credential{
-			Username: cfg.Mongo.Username,
-			Password: cfg.Mongo.Password,
-		}).
+		//SetAuth(options.Credential{
+		//	Username: cfg.Mongo.Username,
+		//	Password: cfg.Mongo.Password,
+		//}).
 		SetConnectTimeout(ConnectTimeout).
 		SetMaxConnIdleTime(MaxIdleTime).
 		SetMinPoolSize(MinPoolSize).
