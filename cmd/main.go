@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	rest "drto-link/internal/api"
 	"drto-link/internal/config"
 	"drto-link/pkg/log"
+	"drto-link/pkg/mongodb"
 	"drto-link/pkg/redis"
 	"github.com/caarlos0/env/v11"
 	"github.com/getsentry/sentry-go"
@@ -40,21 +42,21 @@ func main() {
 	}
 	defer sentry.Flush(2 * time.Second)
 
-	//ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	//defer cancel()
-	//
-	//mongo, err := mongodb.InitConnection(ctx, cfg)
-	//if err != nil {
-	//	panic(err)
-	//	log.Error(log.Mongodb, log.Startup, err, nil)
-	//	os.Exit(1)
-	//}
-	//defer func() {
-	//	if err := mongo.Disconnect(ctx); err != nil {
-	//		log.Error(log.Mongodb, log.Startup, err, nil)
-	//		os.Exit(1)
-	//	}
-	//}()
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	mongo, err := mongodb.InitConnection(ctx, cfg)
+	if err != nil {
+		panic(err)
+		log.Error(log.Mongodb, log.Startup, err, nil)
+		os.Exit(1)
+	}
+	defer func() {
+		if err := mongo.Disconnect(ctx); err != nil {
+			log.Error(log.Mongodb, log.Startup, err, nil)
+			os.Exit(1)
+		}
+	}()
 
 	rdb := redis.InitConnection(cfg)
 	defer func() {
@@ -65,6 +67,6 @@ func main() {
 		}
 	}()
 
-	rest.InitServer(cfg /*mongo,*/, rdb)
+	rest.InitServer(cfg, mongo, rdb)
 
 }
