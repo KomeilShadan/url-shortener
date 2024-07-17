@@ -2,12 +2,12 @@ package middleware
 
 import (
 	AppHttp "drto-link/internal/api/http"
+	"drto-link/internal/config"
 	"drto-link/pkg/log"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"net/http"
-	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -16,7 +16,7 @@ import (
 var (
 	mutex             sync.Mutex
 	rateLimitDuration = 15 * time.Minute
-	apiQuota          = os.Getenv("API_QUOTA")
+	apiQuota          = config.Get().App.APIQuota
 )
 
 func Throttle(rdb *redis.Client) gin.HandlerFunc {

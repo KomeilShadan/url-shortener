@@ -15,4 +15,5 @@ type App struct {
 	Key         string `env:"APP_KEY" envDefault:""`
 	Mode        string `env:"APP_MODE" envDefault:"debug"`
 	Environment Env    `env:"APP_ENV" envDefault:"local"`
+	APIQuota    string `env:"API_QUOTA" envDefault:"10"`
 }

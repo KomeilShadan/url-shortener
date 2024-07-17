@@ -14,8 +14,8 @@ services:
     depends_on:
      mongodb:
         condition: service_healthy
-    networks:
-      - default
+#    networks:
+#      - default
 
   mongodb:
     container_name: "${SERVICE_NAME}-mongo"
@@ -35,22 +35,22 @@ services:
       - "27717:27017"
     volumes:
       - mongodb_data_container:/data/db
-    networks:
-      - default
+#    networks:
+#      - default
 
   redis:
     image: redis:latest
     container_name: "${SERVICE_NAME}-redis"
     ports:
-      - "6379:6379"
+      - "6479:6379"
     restart: unless-stopped
-    networks:
-      - default
+#    networks:
+#      - default
 
 volumes:
   mongodb_data_container:
 
 
-networks:
-  default:
-    driver: bridge
+#networks:
+#  default:
+#    driver: bridge
