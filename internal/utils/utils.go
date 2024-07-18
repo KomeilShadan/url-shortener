@@ -32,6 +32,7 @@ func Base64Encode(data []byte) string {
 
 func EnforceHTTP(url string) string {
 	url = strings.TrimSpace(url)
+	url = strings.Replace(url, "www.", "", 1)
 
 	if url[:4] != "http" {
 		urlParts := strings.Split(url, "://")
