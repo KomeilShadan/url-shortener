@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"net/http"
 )
 
@@ -21,7 +22,7 @@ func ShortLink(ctx *gin.Context) {
 	var (
 		req              request.ShortLinkRequest
 		shortLinkBaseURL string
-		linkStruct       model.Link
+		fullShortLink    string
 	)
 
 	// Bind the JSON payload to the ShortLinkRequest struct
@@ -41,13 +42,15 @@ func ShortLink(ctx *gin.Context) {
 
 	shortLinkBaseURL = cfg.App.ShortLinkBaseURL
 	shortLink, _ := service.GenerateShortLink(link)
-	updateQuery := bson.M{"$set": model.Link{Link: link, ShortLink: shortLinkBaseURL + shortLink}}
+	fullShortLink = shortLinkBaseURL + shortLink
+	updateQuery := model.Link{Link: link, ShortLink: fullShortLink}
 
 	mongodb := ctx.MustGet("mongo").(*mongo.Client)
-	err := mongodb.Database("link").
+	opts := options.Replace().SetUpsert(true)
+
+	_, err := mongodb.Database("link").
 		Collection("links").
-		FindOneAndReplace(ctx, bson.M{"link": link}, updateQuery).
-		Decode(&linkStruct)
+		ReplaceOne(ctx, bson.M{"link": link}, updateQuery, opts)
 
 	if err != nil {
 		log.Error(log.Mongodb, log.Update, err, nil)
@@ -61,8 +64,8 @@ func ShortLink(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusCreated, AppHttp.ApiResponse{
 		Data: response.ShortLinkResponse{
-			Link:      linkStruct.Link,
-			ShortLink: linkStruct.ShortLink,
+			Link:      link,
+			ShortLink: fullShortLink,
 			Expirable: req.Expirable,
 		},
 	})
