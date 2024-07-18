@@ -34,11 +34,13 @@ func Throttle(rdb *redis.Client) gin.HandlerFunc {
 			if err != nil {
 				log.Error(log.Redis, log.Insert, err, nil)
 				ctx.AbortWithStatus(http.StatusInternalServerError)
+				return
 			}
 			err = rdb.Decr(rdb.Context(), ctx.ClientIP()).Err()
 			if err != nil {
 				log.Error(log.Redis, log.Insert, err, nil)
 				ctx.AbortWithStatus(http.StatusInternalServerError)
+				return
 			}
 			defer ctx.Next()
 		} else {
@@ -54,6 +56,7 @@ func Throttle(rdb *redis.Client) gin.HandlerFunc {
 					},
 					Path: ctx.FullPath(),
 				})
+				return
 			}
 		}
 	}

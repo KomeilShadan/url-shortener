@@ -3,12 +3,12 @@ package utils
 import (
 	"crypto/sha256"
 	AppHttp "drto-link/internal/api/http"
+	"drto-link/internal/config"
 	"encoding/base64"
 	"errors"
 	"github.com/asaskevich/govalidator"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"os"
 	"strings"
 )
 
@@ -45,7 +45,8 @@ func AvoidDSelfDomain(url string) bool {
 	// Basically this function removes all the commonly found
 	// prefixes from URL such as http, https, www
 	// then checks of the remaining string is the APP_HOST itself
-	if url == os.Getenv("APP_HOST") {
+	var host string = config.Get().App.Host
+	if url == host {
 		return false
 	}
 	newURL := strings.Replace(url, "http://", "", 1)
@@ -53,7 +54,7 @@ func AvoidDSelfDomain(url string) bool {
 	newURL = strings.Replace(newURL, "www.", "", 1)
 	newURL = strings.Split(newURL, "/")[0]
 
-	if newURL == os.Getenv("APP_HOST") {
+	if newURL == host {
 		return false
 	}
 	return true

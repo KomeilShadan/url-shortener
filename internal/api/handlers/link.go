@@ -37,13 +37,14 @@ func ShortLink(ctx *gin.Context) {
 			Error:   errors.New("unprocessable input link"),
 			Path:    ctx.FullPath(),
 		})
+		return
 	}
 	link := utils.EnforceHTTP(req.Link)
 
 	shortLinkBaseURL = cfg.App.ShortLinkBaseURL
 	shortLink, _ := service.GenerateShortLink(link)
 	fullShortLink = shortLinkBaseURL + shortLink
-	updateQuery := model.Link{Link: link, ShortLink: fullShortLink}
+	updateQuery := bson.M{"link": link, "short_link": fullShortLink}
 
 	mongodb := ctx.MustGet("mongo").(*mongo.Client)
 	opts := options.Replace().SetUpsert(true)
@@ -59,6 +60,7 @@ func ShortLink(ctx *gin.Context) {
 			Error:   errors.New("database error"),
 			Path:    ctx.FullPath(),
 		})
+		return
 	}
 	//implement redis store or caching
 
@@ -94,8 +96,9 @@ func ResolveLink(ctx *gin.Context) {
 			Error:   errors.New("database error"),
 			Path:    ctx.FullPath(),
 		})
+		return
 	}
-	//implement fetching link from mongo or redis
+	//implement fetching link from redis
 
 	ctx.JSON(http.StatusOK, AppHttp.ApiResponse{
 		Data: response.ResolveLinkResponse{

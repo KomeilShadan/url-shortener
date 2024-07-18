@@ -20,6 +20,8 @@ func AuthMiddleware() gin.HandlerFunc {
 				Error:   errors.New("you are not authorized").Error(),
 				Path:    ctx.FullPath(),
 			})
+			return
+
 		} else {
 			ctx.Next()
 		}
