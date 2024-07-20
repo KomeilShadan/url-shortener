@@ -21,6 +21,7 @@ func ShortLink(ctx *gin.Context) {
 	cfg := config.Get()
 	var (
 		req              request.ShortLinkRequest
+		link             string
 		shortLinkBaseURL string
 		fullShortLink    string
 	)
@@ -39,7 +40,7 @@ func ShortLink(ctx *gin.Context) {
 		})
 		return
 	}
-	link := utils.EnforceHTTP(req.Link)
+	link = utils.EnforceHTTP(req.Link)
 
 	shortLinkBaseURL = cfg.App.ShortLinkBaseURL
 	shortLink, _ := service.GenerateShortLink(link)
@@ -51,10 +52,10 @@ func ShortLink(ctx *gin.Context) {
 
 	_, err := mongodb.Database("link").
 		Collection("links").
-		ReplaceOne(ctx, bson.M{"link": link}, updateQuery, opts)
+		ReplaceOne(ctx.Request.Context(), bson.M{"link": link}, updateQuery, opts)
 
 	if err != nil {
-		log.Error(log.Mongodb, log.Update, err, nil)
+		log.Error(log.Mongodb, log.Insert, err, nil)
 		ctx.AbortWithStatusJSON(http.StatusInternalServerError, AppHttp.ApiResponse{
 			Message: "Internal Server Error",
 			Error:   errors.New("database error"),
@@ -86,7 +87,7 @@ func ResolveLink(ctx *gin.Context) {
 	mongodb := ctx.MustGet("mongo").(*mongo.Client)
 	err := mongodb.Database("link").
 		Collection("links").
-		FindOne(ctx, bson.M{"short_link": req.ShortLink}).
+		FindOne(ctx.Request.Context(), bson.M{"short_link": req.ShortLink}).
 		Decode(&linkStruct)
 
 	if err != nil {
@@ -103,6 +104,50 @@ func ResolveLink(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, AppHttp.ApiResponse{
 		Data: response.ResolveLinkResponse{
 			Link: linkStruct.Link,
+		},
+	})
+}
+
+func UpdateLink(ctx *gin.Context) {
+	var (
+		req  request.UpdateLinkRequest
+		link string
+	)
+
+	utils.BindRequestBody(ctx, &req)
+
+	utils.ValidateRequestBody(ctx, &req)
+
+	if !utils.AvoidDSelfDomain(req.Link) {
+		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, AppHttp.ApiResponse{
+			Message: "Unprocessable Entity (Nice Try!)",
+			Error:   errors.New("unprocessable input link"),
+			Path:    ctx.FullPath(),
+		})
+		return
+	}
+	link = utils.EnforceHTTP(req.Link)
+	updateQuery := bson.M{"$set": bson.M{"link": link}}
+
+	mongodb := ctx.MustGet("mongo").(*mongo.Client)
+	_, err := mongodb.Database("link").
+		Collection("links").
+		UpdateOne(ctx.Request.Context(), bson.M{"short_link": req.ShortLink}, updateQuery)
+
+	if err != nil {
+		log.Error(log.Mongodb, log.Update, err, nil)
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, AppHttp.ApiResponse{
+			Message: "Internal Server Error",
+			Error:   errors.New("database error"),
+			Path:    ctx.FullPath(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusAccepted, AppHttp.ApiResponse{
+		Data: response.UpdateLinkResponse{
+			Link:      link,
+			ShortLink: req.ShortLink,
 		},
 	})
 }

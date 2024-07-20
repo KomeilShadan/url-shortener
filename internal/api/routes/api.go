@@ -19,5 +19,6 @@ func ApiRoutes(router *gin.Engine, cfg *config.Config, mongo *mongo.Client, rdb 
 		Use(middleware.InjectMongoClient(mongo)).
 		Use(middleware.InjectRedisClient(rdb)).
 		POST("link/short", handlers.ShortLink).
-		GET("link/resolve", handlers.ResolveLink)
+		GET("link/resolve", handlers.ResolveLink).
+		PUT("link/", handlers.UpdateLink)
 }
