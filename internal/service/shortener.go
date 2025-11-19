@@ -1,11 +1,11 @@
 package service
 
 import (
-	"drto-link/internal/utils"
 	"errors"
+	"janus/internal/utils"
 )
 
-func GenerateShortLink(link string) (string, error) {
+func GenerateShortLinkHash(link string) (string, error) {
 	var (
 		linkHash  []byte
 		shortLink string

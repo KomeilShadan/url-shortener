@@ -16,5 +16,6 @@ type App struct {
 	Mode             string `env:"APP_MODE" envDefault:"debug"`
 	Environment      Env    `env:"APP_ENV" envDefault:"local"`
 	APIQuota         string `env:"API_QUOTA" envDefault:"10"`
-	ShortLinkBaseURL string `env:"SHORT_LINK_BASE_URL" envDefault:"https://drto-link.com/"`
+	ShortLinkBaseURL string `env:"SHORT_LINK_BASE_URL" envDefault:"https://janus.me/"`
+	FallbackBaseURL  string `env:"FALLBACK_BASE_URL" envDefault:"https://myproject.com/"`
 }

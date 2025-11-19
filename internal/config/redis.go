@@ -1,6 +1,7 @@
 package config
 
 type Redis struct {
+	Addr         string `env:"REDIS_ADDR" envDefault:"redis:6379"`
 	Host         string `env:"REDIS_HOST" envDefault:"redis:6379"`
 	Port         string `env:"REDIS_PORT" envDefault:"6379"`
 	DB           int    `env:"REDIS_DB" envDefault:"0"`

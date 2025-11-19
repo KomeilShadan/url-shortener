@@ -1,4 +1,4 @@
-module drto-link
+module janus
 
 go 1.22
 

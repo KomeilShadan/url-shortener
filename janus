@@ -1,0 +1,335 @@
+#!/bin/bash
+
+# Janus CLI - Project Management Script
+# Usage: ./janus [command] [options]
+
+set -e  # Exit on error
+
+# Color codes for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Container names
+API_CONTAINER="docker exec -it janus-api"
+MONGO_CONTAINER="docker exec -it janus-mongo"
+REDIS_CONTAINER="docker exec -it janus-redis"
+
+# Helper functions
+function print_success {
+    echo -e "${GREEN}✓ $1${NC}"
+}
+
+function print_error {
+    echo -e "${RED}✗ $1${NC}"
+}
+
+function print_info {
+    echo -e "${BLUE}ℹ $1${NC}"
+}
+
+function print_warning {
+    echo -e "${YELLOW}⚠ $1${NC}"
+}
+
+function show_help {
+    cat << EOF
+${BLUE}Janus CLI - Project Management Tool${NC}
+
+${GREEN}Usage:${NC}
+  ./janus [command] [options]
+
+${GREEN}Git Commands:${NC}
+  clear              Clear code and configs
+  reload             Pull repository and prune merged branches
+  feat <name>        Create a new feature branch (feat-<name>)
+  fix <name>         Create a new fix branch (fix-<name>)
+  prune              Prune merged branches
+
+${GREEN}Build Commands:${NC}
+  build              Rebuild the Go project
+  test               Run tests in API container
+  lint               Run linter in API container
+
+${GREEN}Container Commands:${NC}
+  api                Access API container shell
+  mongo              Access MongoDB container shell
+  redis              Access Redis container shell
+  logs [service]     View logs (default: all services)
+
+${GREEN}Docker Compose Commands:${NC}
+  up                 Start all services
+  down               Stop all services
+  restart            Restart all services
+  ps                 List running containers
+  [any]              Pass through to docker-compose
+
+${GREEN}Examples:${NC}
+  ./janus up -d                    # Start services in detached mode
+  ./janus logs -f api              # Follow API logs
+  ./janus feat user-authentication # Create feature branch
+  ./janus build                    # Rebuild project
+  ./janus api                      # Access API container
+
+EOF
+}
+
+function clearCodeAndConfigs {
+    print_info "Clearing code and configs..."
+    # Add your cleanup logic here
+    # Example: rm -rf tmp/* logs/*
+    print_success "Cleanup completed"
+}
+
+function pruneBranches {
+    print_info "Pruning merged branches..."
+    
+    # Protected branches that should never be deleted
+    forbidden="(master|main|stage|develop|production)"
+    
+    # Fetch latest changes
+    git fetch --all --prune
+    
+    # Count branches to be deleted
+    local remote_count=$(git branch -r --merged master 2>/dev/null | grep -E -v "$forbidden" | wc -l || echo 0)
+    local local_count=$(git branch --merged master 2>/dev/null | grep -E -v "$forbidden" | wc -l || echo 0)
+    
+    if [ "$remote_count" -eq 0 ] && [ "$local_count" -eq 0 ]; then
+        print_info "No branches to prune"
+        return
+    fi
+    
+    print_info "Found $remote_count remote and $local_count local branches to prune"
+    
+    # Prune remote branches merged into master
+    git branch -r --merged master 2>/dev/null | grep -E -v "$forbidden" | cut -d/ -f2- | xargs -n 1 -r git push --delete origin 2>/dev/null || true
+    
+    # Prune remote branches merged into stage
+    git branch -r --merged stage 2>/dev/null | grep -E -v "$forbidden" | cut -d/ -f2- | xargs -n 1 -r git push --delete origin 2>/dev/null || true
+    
+    # Prune local branches merged into master
+    git branch --merged master 2>/dev/null | grep -E -v "$forbidden" | xargs -n 1 -r git branch -d 2>/dev/null || true
+    
+    # Prune local branches merged into stage
+    git branch --merged stage 2>/dev/null | grep -E -v "$forbidden" | xargs -n 1 -r git branch -d 2>/dev/null || true
+    
+    print_success "Branch pruning completed"
+}
+
+function reloadCodeAndConfigs {
+    print_info "Reloading repository..."
+    
+    # Get current branch
+    currentBranch=$(git symbolic-ref --short -q HEAD)
+    print_info "Current branch: $currentBranch"
+    
+    # Check for uncommitted changes
+    if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+        print_warning "You have uncommitted changes. Stashing them..."
+        git stash save "Auto-stash before reload $(date +%Y-%m-%d_%H:%M:%S)"
+    fi
+    
+    # Pull latest changes
+    print_info "Pulling from origin/$currentBranch..."
+    git pull origin "$currentBranch" || print_warning "Failed to pull from $currentBranch"
+    
+    print_info "Pulling from origin/master..."
+    git pull origin master || print_warning "Failed to pull from master"
+    
+    # Prune branches
+    pruneBranches
+    
+    # Clear configs
+    clearCodeAndConfigs
+    
+    print_success "Reload completed"
+}
+
+function createBranch {
+    if [ -z "$2" ]; then
+        print_error "Branch name is required"
+        echo "Usage: ./janus feat <branch-name>"
+        exit 1
+    fi
+    
+    branch="feature/$2"
+    print_info "Creating feature branch: $branch"
+    
+    # Fetch and pull latest
+    git fetch --all --prune
+    git pull origin master
+    
+    # Check if branch already exists
+    if git show-ref --verify --quiet "refs/heads/$branch"; then
+        print_error "Branch $branch already exists locally"
+        exit 1
+    fi
+    
+    # Create and push branch
+    git checkout -b "$branch"
+    git push --set-upstream origin "$branch"
+    
+    print_success "Feature branch '$branch' created and pushed"
+}
+
+function createFixBranch {
+    if [ -z "$2" ]; then
+        print_error "Branch name is required"
+        echo "Usage: ./janus fix <branch-name>"
+        exit 1
+    fi
+    
+    branch="fix/$2"
+    print_info "Creating fix branch: $branch"
+    
+    # Fetch and pull latest
+    git fetch --all --prune
+    git pull origin master
+    
+    # Check if branch already exists
+    if git show-ref --verify --quiet "refs/heads/$branch"; then
+        print_error "Branch $branch already exists locally"
+        exit 1
+    fi
+    
+    # Create and push branch
+    git checkout -b "$branch"
+    git push --set-upstream origin "$branch"
+    
+    print_success "Fix branch '$branch' created and pushed"
+}
+
+function rebuildProject {
+    print_info "Rebuilding Go project..."
+    
+    # Check if container is running
+    if ! docker ps | grep -q "janus-api"; then
+        print_error "API container is not running. Start it with: ./janus up"
+        exit 1
+    fi
+    
+    # Build the project
+    if ${API_CONTAINER} go build -o main ./cmd; then
+        print_success "Project rebuilt successfully"
+    else
+        print_error "Build failed"
+        exit 1
+    fi
+}
+
+function runTests {
+    print_info "Running tests..."
+    
+    if ! docker ps | grep -q "janus-api"; then
+        print_error "API container is not running. Start it with: ./janus up"
+        exit 1
+    fi
+    
+    ${API_CONTAINER} go test ./... -v
+}
+
+function runLint {
+    print_info "Running linter..."
+    
+    if ! docker ps | grep -q "janus-api"; then
+        print_error "API container is not running. Start it with: ./janus up"
+        exit 1
+    fi
+    
+    ${API_CONTAINER} golangci-lint run ./... || print_warning "Linter not installed in container"
+}
+
+function viewLogs {
+    cd deployment/local
+    if [ -z "$2" ]; then
+        docker-compose logs -f
+    else
+        docker-compose logs -f "$2"
+    fi
+}
+
+function binDockerCompose {
+    cd deployment/local
+    docker-compose "$@"
+}
+
+function checkDocker {
+    if ! command -v docker &> /dev/null; then
+        print_error "Docker is not installed or not in PATH"
+        exit 1
+    fi
+    
+    if ! docker info &> /dev/null; then
+        print_error "Docker daemon is not running"
+        exit 1
+    fi
+}
+
+# Main script logic
+case $1 in
+    'help'|'-h'|'--help')
+        show_help
+        ;;
+    'clear')
+        clearCodeAndConfigs
+        ;;
+    'reload')
+        reloadCodeAndConfigs
+        ;;
+    'prune')
+        pruneBranches
+        ;;
+    'feat')
+        createBranch "$@"
+        ;;
+    'fix')
+        createFixBranch "$@"
+        ;;
+    'build'|'gobuild')
+        checkDocker
+        rebuildProject
+        ;;
+    'test')
+        checkDocker
+        runTests
+        ;;
+    'lint')
+        checkDocker
+        runLint
+        ;;
+    'api')
+        checkDocker
+        print_info "Accessing API container..."
+        ${API_CONTAINER} //bin/sh
+        ;;
+    'mongo')
+        checkDocker
+        print_info "Accessing MongoDB container..."
+        ${MONGO_CONTAINER} bash
+        ;;
+    'redis')
+        checkDocker
+        print_info "Accessing Redis container..."
+        ${REDIS_CONTAINER} bash
+        ;;
+    'logs')
+        checkDocker
+        viewLogs "$@"
+        ;;
+    'up'|'down'|'restart'|'ps'|'stop'|'start')
+        checkDocker
+        binDockerCompose "$@"
+        ;;
+    '')
+        print_error "No command specified"
+        echo ""
+        show_help
+        exit 1
+        ;;
+    *)
+        checkDocker
+        binDockerCompose "$@"
+        ;;
+esac

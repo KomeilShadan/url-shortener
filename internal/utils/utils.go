@@ -2,12 +2,12 @@ package utils
 
 import (
 	"crypto/sha256"
-	AppHttp "drto-link/internal/api/http"
-	"drto-link/internal/config"
 	"encoding/base64"
 	"errors"
 	"github.com/asaskevich/govalidator"
 	"github.com/gin-gonic/gin"
+	AppHttp "janus/internal/api/http"
+	"janus/internal/config"
 	"net/http"
 	"strings"
 )

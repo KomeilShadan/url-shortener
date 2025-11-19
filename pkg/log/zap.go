@@ -1,16 +1,14 @@
 package log
 
 import (
-	"drto-link/internal/config"
+	"janus/internal/config"
 	"fmt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
-	"sync"
 	"time"
 )
 
-var once sync.Once
 var zapSingletonLogger *zap.SugaredLogger
 
 type Zap struct {
@@ -21,14 +19,13 @@ type Zap struct {
 func (z *Zap) Info(msg string, fields ...zap.Field) {
 
 }
-
 func (z *Zap) Debug(sect Section, event Event, msg string, extra map[ExtraKey]interface{}) {
-	params := prepareLog(sect, event, extra)
+	params := prepareLogParams(sect, event, extra)
 	z.logger.Debugw(msg, params...)
 }
 
 func (z *Zap) Error(sect Section, event Event, msg string, extra map[ExtraKey]interface{}) {
-	params := prepareLog(sect, event, extra)
+	params := prepareLogParams(sect, event, extra)
 	z.logger.Errorw(msg, params...)
 }
 
@@ -65,15 +62,4 @@ func (z *Zap) Init() {
 	})
 	z.logger = zapSingletonLogger
 	z.logger.Errorw("message", "key", "value")
-}
-
-func prepareLog(sect Section, event Event, extra map[ExtraKey]interface{}) []interface{} {
-	if extra == nil {
-		extra = make(map[ExtraKey]interface{})
-	}
-	extra["Section"] = sect
-	extra["Event"] = event
-	params := MapToZapParams(extra)
-	fmt.Println(params)
-	return params
 }
