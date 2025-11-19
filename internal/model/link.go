@@ -1,6 +1,6 @@
 package model
 
 type Link struct {
-	Link      string `json:"link"`
-	ShortLink string `json:"short_link"`
+	OriginalURL   string `json:"link" bson:"link"`
+	ShortLinkHash string `json:"short_link" bson:"short_link_hash"`
 }
