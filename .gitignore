@@ -30,9 +30,10 @@ cover.html
 .env
 deployment/*/.env
 
-# Local binary folder
+# Build artifacts
 main
 bin/
+janus-*
 
 # Local build folder for storing build artifacts
 build/
@@ -43,5 +44,17 @@ build/
 # Logs files
 /logs/*
 
+# Test coverage
+coverage.out
+coverage.html
 
-README.md
+# Benchmark results
+benchmark.txt
+benchmark_results.txt
+
+# Build artifacts
+janus
+*.prof
+
+# Release notes (use GitHub releases)
+RELEASE_NOTES_*.md

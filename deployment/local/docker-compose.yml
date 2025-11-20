@@ -12,21 +12,30 @@ services:
     ports:
       - "8083:8083"
     depends_on:
-     mongodb:
+      mongodb:
         condition: service_healthy
-#    networks:
-#      - default
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8083/s/ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - janus-network
 
   mongodb:
     container_name: "${SERVICE_NAME}-mongo"
-    image: mongo:latest
+    image: mongo:7.0
     restart: unless-stopped
     healthcheck:
-      test: echo 'db.runCommand("ping").ok'
-      interval: 1s
-      retries: 10
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     environment:
-#      - MONGO_INITDB_DATABASE=${MONGO_DB}
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
     env_file:
@@ -34,23 +43,37 @@ services:
     ports:
       - "27717:27017"
     volumes:
-      - mongodb_data_container:/data/db
-#    networks:
-#      - default
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    networks:
+      - janus-network
 
   redis:
-    image: redis:latest
+    image: redis:7-alpine
     container_name: "${SERVICE_NAME}-redis"
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
     ports:
       - "6479:6379"
-    restart: unless-stopped
-#    networks:
-#      - default
+    volumes:
+      - redis_data:/data
+    networks:
+      - janus-network
 
 volumes:
-  mongodb_data_container:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+  redis_data:
+    driver: local
 
-
-#networks:
-#  default:
-#    driver: bridge
+networks:
+  janus-network:
+    driver: bridge

@@ -1,25 +1,51 @@
-FROM golang:alpine
+# Build stage
+FROM golang:1.22-alpine AS builder
 
-# Create a non-root user
-RUN adduser --disabled-password --gecos '' komeil
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata
 
-# Set the Current Working Directory inside the container
-WORKDIR /app
+# Set working directory
+WORKDIR /build
 
-# Dependencies will be cached if the go.mod and go.sum files are not changed
-RUN go clean --modcache
-# Copy the source code from the current directory to the Working Directory inside the container
+# Copy go mod files first for better caching
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
 COPY . .
 
-ENV GOCACHE=/root/.cache/go-build
-RUN --mount=type=cache,target="/root/.cache/go-build" go build -o main ./cmd
+# Build the application with optimizations
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s" \
+    -o janus \
+    ./cmd
 
-RUN chown -R komeil:komeil /app
+# Final stage
+FROM alpine:latest
 
-USER komeil
+# Install runtime dependencies
+RUN apk --no-cache add ca-certificates tzdata && \
+    adduser -D -g '' appuser
 
+# Set working directory
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /build/janus .
+
+# Change ownership
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
 EXPOSE 8083
 
-# Command to run the executable
-CMD ["./main"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8083/s/ping || exit 1
+
+# Run the application
+CMD ["./janus"]
 

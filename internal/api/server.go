@@ -70,6 +70,53 @@ func InitServer(cfg *config.Config, mongo *mongo.Client, rdb *redis.Client) {
 		"max_size":         cacheMaxSize,
 	})
 
+	// Initialize link buffer for async MongoDB inserts (optional feature).
+	// When disabled, all link inserts are processed synchronously.
+	// When enabled, choose between in-memory (fast but data loss on crash)
+	// or Kafka (persistent, no data loss).
+	var buffer service.LinkBufferInterface
+	if cfg.Link.BufferEnabled {
+		switch cfg.Link.BufferType {
+		case "kafka":
+			brokers := []string{cfg.Link.KafkaBrokers}
+			if cfg.Link.KafkaBrokers != "" {
+				// TODO: Split by comma for multiple brokers
+				// brokers = strings.Split(cfg.Link.KafkaBrokers, ",")
+			}
+			
+			buffer = service.NewKafkaLinkBuffer(
+				repos.Link,
+				brokers,
+				cfg.Link.KafkaTopic,
+				cfg.Link.BufferWorkers,
+			)
+			log.Info(log.Internal, log.Startup, "Kafka link buffer initialized", map[string]interface{}{
+				"brokers": brokers,
+				"topic":   cfg.Link.KafkaTopic,
+				"workers": cfg.Link.BufferWorkers,
+			})
+		case "memory":
+			buffer = service.NewLinkBuffer(
+				repos.Link,
+				cfg.Link.BufferSize,
+				cfg.Link.BufferWorkers,
+			)
+			log.Info(log.Internal, log.Startup, "In-memory link buffer initialized", map[string]interface{}{
+				"buffer_size": cfg.Link.BufferSize,
+				"workers":     cfg.Link.BufferWorkers,
+				"warning":     "Data may be lost on crash. Consider Kafka for production.",
+			})
+		default:
+			log.Warn(log.Internal, log.Startup, "Unknown buffer type, using no-op buffer", map[string]interface{}{
+				"buffer_type": cfg.Link.BufferType,
+			})
+			buffer = &service.NoOpBuffer{}
+		}
+	} else {
+		log.Info(log.Internal, log.Startup, "Link buffer disabled, using synchronous processing", nil)
+		buffer = &service.NoOpBuffer{}
+	}
+
 	// Initialize Gin router with custom recovery middleware
 	router = gin.New()
 	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{
@@ -135,6 +182,15 @@ func InitServer(cfg *config.Config, mongo *mongo.Client, rdb *redis.Client) {
 	log.Info(log.General, log.Shutdown, "Initiating graceful shutdown", map[string]interface{}{
 		"timeout": shutdownTimeout.String(),
 	})
+
+	// Shutdown link buffer first to process pending jobs
+	bufferShutdownTimeout := time.Duration(cfg.Link.BufferShutdownTimeout) * time.Second
+	if buffer != nil {
+		log.Info(log.General, log.Shutdown, "Shutting down link buffer", map[string]interface{}{
+			"timeout": bufferShutdownTimeout.String(),
+		})
+		buffer.Shutdown(bufferShutdownTimeout)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
